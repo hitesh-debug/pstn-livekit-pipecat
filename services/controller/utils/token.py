@@ -1,23 +1,40 @@
-import os, time, uuid, jwt
 
-def mint_livekit_token(room_name: str, identity: str, ttl_seconds: int = 900):
-    api_key = os.environ["LIVEKIT_API_KEY"]
-    api_secret = os.environ["LIVEKIT_API_SECRET"]
+import os
+from datetime import timedelta
+from dotenv import load_dotenv
 
-    now = int(time.time())
-    payload = {
-        "iss": api_key,
-        "sub": identity,
-        "nbf": now - 5,
-        "iat": now,
-        "exp": now + ttl_seconds,
-        "jti": str(uuid.uuid4()),
-        "video": {
-            "room": room_name,
-            "roomJoin": True,
-            "canPublish": True,
-            "canSubscribe": True,
-        },
-    }
-    token = jwt.encode(payload, api_secret, algorithm="HS256")
-    return token
+load_dotenv()
+API_KEY = os.environ["LIVEKIT_API_KEY"]
+API_SECRET = os.environ["LIVEKIT_API_SECRET"]
+
+def mint_livekit_token(room: str, identity: str, ttl_seconds: int = 900) -> str:
+    """
+    Creates an access token that lets the agent join `room` with pub/sub.
+    """
+    try:
+        # Preferred: use livekit's helper classes
+        from livekit import AccessToken, VideoGrant
+        grant = VideoGrant(room=room, room_join=True, room_admin=False,
+                           can_publish=True, can_subscribe=True)
+        at = AccessToken(API_KEY, API_SECRET, identity=identity, ttl=timedelta(seconds=ttl_seconds))
+        at.add_grant(grant)
+        return at.to_jwt()
+    except Exception:
+        # Fallback: build JWT manually via PyJWT
+        import time, jwt, uuid
+        now = int(time.time())
+        payload = {
+            "jti": str(uuid.uuid4()),
+            "iss": API_KEY,
+            "sub": identity,
+            "nbf": now - 10,
+            "exp": now + ttl_seconds,
+            "video": {  # LiveKit video grant
+                "room": room,
+                "roomJoin": True,
+                "canPublish": True,
+                "canSubscribe": True,
+            },
+        }
+        return jwt.encode(payload, API_SECRET, algorithm="HS256")
+
