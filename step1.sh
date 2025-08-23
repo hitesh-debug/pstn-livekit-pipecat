@@ -56,7 +56,7 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 # }
 # JSON
 # aws logs create-log-group --log-group-name /ecs/lk-agent --region $REGION || true
-# # aws ecs register-task-definition --cli-input-json file://agent-td.json --region $REGION
+# aws ecs register-task-definition --cli-input-json file://agent-td.json --region $REGION
 
 # VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text)
 # SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID Name=default-for-az,Values=true \
@@ -66,3 +66,37 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 # # security group (egress open)
 # SG_ID=$(aws ec2 create-security-group --group-name lk-agents-sg --description "lk agents" --vpc-id $VPC_ID --output text)
 # aws ec2 authorize-security-group-egress --group-id sg-00a49f95b64b56864 --ip-permissions IpProtocol=-1,IpRanges='[{CidrIp=0.0.0.0/0}]' || true
+
+# brew install cloudflared && 
+
+# sudo cloudflared service install eyJhIjoiOGRjOWY1ODE0YjlmZDBmNWFiNTM3ZWNjZmI4ZmM4MjciLCJ0IjoiZDA4MGUxMDEtZDc4MS00MjYyLThkMmQtMjJmMDdmMmZkMTIyIiwicyI6IlltRmlOR0kyWkRRdE1UazNPQzAwTldObExUbGxNMkV0WmpnNE5XRTRZemxqTmpZeiJ9
+
+
+# docker tag lk/agent:latest $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/lk/agent:latest
+
+# aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+# docker push $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/lk/agent:latest
+
+# aws ecs register-task-definition \
+#   --cli-input-json file://agent-td.json \
+#   --region $REGION
+
+  # latest ACTIVE task-def ARN (includes :revision)
+# aws ecs create-cluster --cluster-name lk-agents --region $REGION || true
+
+VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text --region $REGION)
+SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID Name=default-for-az,Values=true --query "Subnets[].SubnetId" --output text --region $REGION)
+S1=$(echo $SUBNETS | awk '{print $1}'); S2=$(echo $SUBNETS | awk '{print $2}')
+
+SG_ID=$(aws ec2 create-security-group \
+  --group-name lk-agents-sg \
+  --description "lk agents egress" \
+  --vpc-id $VPC_ID --query GroupId --output text --region $REGION)
+aws ec2 authorize-security-group-egress --group-id $SG_ID \
+  --ip-permissions IpProtocol=-1,IpRanges='[{CidrIp=0.0.0.0/0}]' \
+  --region $REGION || true
+
+echo "SUBNETS: $S1,$S2"
+echo "SECURITY_GROUP: $SG_ID"
+
+

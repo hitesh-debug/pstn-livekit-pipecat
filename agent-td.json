@@ -13,7 +13,7 @@
     "command": ["python","agent.py"],
     "workingDirectory": "/app",
     "environment": [
-      { "name": "LIVEKIT_URL", "value": "wss://YOUR_SUBDOMAIN.livekit.cloud" }
+      { "name": "LIVEKIT_URL", "value": "wss://cozmox-6ss8wlrk.livekit.cloud" }
     ],
     "logConfiguration": {
       "logDriver": "awslogs",

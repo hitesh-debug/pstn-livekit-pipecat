@@ -1,15 +1,20 @@
+# services/controller/controller.py
 import os, json, logging
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request
 from dotenv import load_dotenv
 from utils.token import mint_livekit_token
-from launch_agent import launch_agent
+from launch_agent import launch_agent, stop_agent
 
 load_dotenv()
 app = FastAPI()
 log = logging.getLogger("controller")
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-AGENTS = {}  # room_name -> pid
+# Track running ECS tasks per room (room_name -> taskArn)
+AGENTS: dict[str, str] = {}
+
+TOKEN_TTL = int(os.getenv("CONTROLLER_TOKEN_TTL_SECONDS", "900"))
+LIVEKIT_URL = os.getenv("LIVEKIT_URL")  # e.g. wss://<subdomain>.livekit.cloud
 
 @app.get("/healthz")
 def health():
@@ -17,36 +22,51 @@ def health():
 
 @app.post("/livekit/webhook")
 async def livekit_webhook(request: Request):
+    """
+    Expect LiveKit project-level webhooks (JSON).
+    We care about: room_started / room_ended.
+    """
     body = await request.body()
     try:
         data = json.loads(body.decode("utf-8"))
     except Exception:
         data = {}
 
-    # Expecting events like room created/started with room name
-    # Adjust these keys to match the webhook you configure in LiveKit
-    event = data.get("event") or data.get("type") or "unknown"
-    room = None
-    if "room" in data and isinstance(data["room"], dict):
-        room = data["room"].get("name")
-    else:
+    event = (data.get("event") or data.get("type") or "").lower()
+    # Room name may appear as data["room"]["name"] or "roomName"/"room_name"
+    room = (data.get("room", {}) or {}).get("name") if isinstance(data.get("room"), dict) else None
+    if not room:
         room = data.get("roomName") or data.get("room_name")
 
-    if event.lower() in ("room_started", "room_created") and room:
+    if event in ("room_started", "room_created") and room:
         if room in AGENTS:
-            return {"status":"already-running", "room": room}
+            log.info("Agent already running for room=%s (task=%s)", room, AGENTS[room])
+            return {"status": "already-running", "room": room, "taskArn": AGENTS[room]}
 
-        token_ttl = int(os.getenv("CONTROLLER_TOKEN_TTL_SECONDS", "900"))
-        token = mint_livekit_token(room, identity=f"agent-{room}", ttl_seconds=token_ttl)
-        pid = launch_agent(room, token)
-        AGENTS[room] = pid
-        log.info(f"Launched agent pid={pid} for room={room}")
-        return {"status":"launched", "room": room, "pid": pid}
+        # Mint a short-lived token the agent will use to join the room
+        token = mint_livekit_token(
+            room=room,
+            identity=f"agent-{room}",
+            ttl_seconds=TOKEN_TTL,
+        )
 
-    if event.lower() in ("room_ended", "room_finished") and room:
-        # In a real system, track PIDs and terminate here if needed
-        AGENTS.pop(room, None)
-        log.info(f"Room ended {room}")
-        return {"status":"ended", "room": room}
+        task_arn = launch_agent(
+            room_name=room,
+            livekit_url=LIVEKIT_URL,
+            livekit_token=token,
+        )
+        AGENTS[room] = task_arn
+        log.info("Launched agent task=%s for room=%s", task_arn, room)
+        return {"status": "launched", "room": room, "taskArn": task_arn}
 
-    return {"status":"ignored", "event": event, "room": room}
+    if event in ("room_ended", "room_finished") and room:
+        task_arn = AGENTS.pop(room, None)
+        if task_arn:
+            stop_agent(task_arn)
+            log.info("Stopped agent task=%s for ended room=%s", task_arn, room)
+            return {"status": "stopped", "room": room, "taskArn": task_arn}
+        log.info("Room ended with no tracked agent: %s", room)
+        return {"status": "ended-no-agent", "room": room}
+
+    # Ignore other events
+    return {"status": "ignored", "event": event, "room": room}

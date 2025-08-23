@@ -1,6 +1,9 @@
 # Core
 pydantic==2.9.0
 python-dotenv==1.0.1
-# Pipecat & LiveKit (verify exact package names and versions for your environment)
-pipecat-ai
-livekit
+
+# Pipecat & LiveKit
+pipecat-ai[livekit,openai]         # installs the `pipecat` module + LiveKit/OpenAI extras
+livekit-agents                     # LiveKit agents framework (if you use it)
+livekit                            # LiveKit realtime SDK (participant)
+livekit-api                      # (optional) if you call the LiveKit server API
