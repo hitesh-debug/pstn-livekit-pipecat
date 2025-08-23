@@ -1,0 +1,6 @@
+# Core
+pydantic==2.9.0
+python-dotenv==1.0.1
+# Pipecat & LiveKit (verify exact package names and versions for your environment)
+pipecat-ai
+livekit

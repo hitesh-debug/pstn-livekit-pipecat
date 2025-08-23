@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  controller:
+    build: ./services/controller
+    env_file: .env
+    ports: ["${CONTROLLER_PORT:-8080}:8080"]
+    volumes:
+      - ./services/agent:/app/agent:ro
+    tty: true
+
+  twiml_server:
+    build: ./services/twiml_server
+    env_file: .env
+    ports: ["${TWIML_PORT:-8081}:8081"]
