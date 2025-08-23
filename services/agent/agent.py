@@ -2,68 +2,77 @@
 import os, asyncio, time, logging
 from dotenv import load_dotenv
 
-# Install/adjust these imports per your Pipecat version
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
+from pipecat.transports.services.livekit import LiveKitTransport, LiveKitParams
+from pipecat.frames.frames import TranscriptionFrame, TextFrame
+# Optional: lower-latency/accurate VAD (requires: pip install "pipecat-ai[silero]")
 try:
-    from pipecat.pipeline import Pipeline, Stage
-    from pipecat.vad import WebRTCVAD
-    from pipecat.transports.services.livekit import LiveKitTransport
-except Exception as e:
-    raise RuntimeError(f"Pipecat/LiveKit imports failed: {e}")
+    from pipecat.audio.vad.silero import SileroVADAnalyzer  # optional
+    VAD = SileroVADAnalyzer()
+except Exception:
+    VAD = None  # use transport default
 
 load_dotenv()
 log = logging.getLogger("agent")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-LIVEKIT_URL   = os.environ["LIVEKIT_URL"]     # provided via overrides
-LIVEKIT_TOKEN = os.environ["LIVEKIT_TOKEN"]   # provided via overrides
-ROOM_NAME     = os.environ["ROOM_NAME"]       # provided via overrides
+LIVEKIT_URL   = os.environ["LIVEKIT_URL"]
+LIVEKIT_TOKEN = os.environ["LIVEKIT_TOKEN"]
+ROOM_NAME     = os.environ["ROOM_NAME"]
 
-class EchoLite(Stage):
-    async def on_user_transcript(self, text: str):
-        # minimal low-latency reply
-        await self.emit_tts(f"You said: {text}. Got it!")
+class EchoLite(FrameProcessor):
+    async def process_frame(self, frame, direction):
+        # Always call parent first to keep system frames sane
+        await super().process_frame(frame, direction)
+
+        # When the user transcription arrives, emit a TextFrame for TTS
+        if isinstance(frame, TranscriptionFrame) and frame.text:
+            await self.push_frame(TextFrame(f"You said: {frame.text}. Got it!"),
+                                  FrameDirection.DOWNSTREAM)
+
+        # Forward the original frame to the next processors
+        await self.push_frame(frame, direction)
 
 async def main():
     transport = LiveKitTransport(
         url=LIVEKIT_URL,
         token=LIVEKIT_TOKEN,
         room_name=ROOM_NAME,
-        params=dict(
-            audio_sample_rate=16000,
-            audio_channels=1,
-            jitter_buffer_ms=40,
-            # enable barge-in if supported in your version:
-            # enable_barge_in=True,
+        params=LiveKitParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            vad_analyzer=VAD,  # None = default; or Silero if available
         ),
     )
 
-    pipeline = Pipeline(
-        transport=transport,
-        stages=[
-            WebRTCVAD(aggressiveness=2, min_voice_ms=120, max_silence_ms=150),
-            EchoLite(),
-        ],
-        # TODO: plug your streaming STT/TTS here for <600 ms roundtrip
-        # stt=YourStreamingSTT(...),
-        # tts=YourStreamingTTS(...),
-    )
+    # TODO: insert your streaming STT/TTS services here (e.g., OpenAI STT/TTS)
+    # e.g. stt = OpenAITranscriptionService(...)
+    #      tts = OpenAITTSService(...)
 
-    # simple latency probe
+    pipeline = Pipeline([
+        transport.input(),   # audio from participants
+        # stt,
+        EchoLite(),
+        # tts,
+        transport.output(),  # audio to participants
+    ])
+
     t0 = None
-    async def on_vad_start():
+    @transport.event_handler("on_audio_track_subscribed")
+    async def _on_vad_start(transport, participant_id):
         nonlocal t0
         t0 = time.perf_counter()
-    async def on_first_tts_chunk():
+
+    @transport.event_handler("on_data_received")
+    async def _on_first_tts_chunk(transport, data, participant_id):
+        # Example hook: replace with actual event you wire from your TTS service
         if t0:
             log.info("[latency] user->tts-first ~%.1f ms", (time.perf_counter() - t0) * 1000)
 
-    if hasattr(transport, "on_vad_start"):
-        transport.on_vad_start = on_vad_start
-    if hasattr(transport, "on_first_tts_chunk"):
-        transport.on_first_tts_chunk = on_first_tts_chunk
-
-    await pipeline.start()
-    await pipeline.wait_closed()
+    # Run your pipeline (see your runner/invocation pattern)
+    # await pipeline.start()
+    # await pipeline.wait_closed()
 
 if __name__ == "__main__":
     asyncio.run(main())

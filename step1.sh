@@ -124,11 +124,40 @@ SERVICE=lk-agent
 #   --region "$REGION" --cli-input-json file://td-arm.json \
 #   --query 'taskDefinition.taskDefinitionArn' --output text)
 
+# TD_ARN=$(aws ecs list-task-definitions \
+#   --region "$REGION" --family-prefix lk-agent --status ACTIVE --sort DESC --max-results 1 \
+#   --query 'taskDefinitionArns[0]' --output text)
+# echo "$TD_ARN"
+
 # aws ecs update-service --region "$REGION" \
 #   --cluster "$CLUSTER" --service "$SERVICE" \
-#   --task-definition "$NEW_TD_ARN"
+#   --task-definition "arn:aws:ecs:us-east-1:820178563918:task-definition/lk-agent:5"
 
 # aws ecs register-task-definition \
 #   --cli-input-json file://agent-td.json \
 #   --region $REGION
+
+# set your region and family
+# REGION=us-east-1
+FAMILY=lk-agent
+
+# Latest ACTIVE revision (deployable)
+TD_ARN=$(aws ecs list-task-definitions \
+  --region "$REGION" --family-prefix "$FAMILY" \
+  --status ACTIVE --sort DESC --max-results 1 \
+  --query 'taskDefinitionArns[0]' --output text)
+echo "$TD_ARN"              # arn:aws:ecs:...:task-definition/lk-agent:42
+echo "${TD_ARN##*:}"        # 42 (just the number)
+
+# Or: ask ECS directly for the latest ACTIVE and get the number
+REV=$(aws ecs describe-task-definition \
+  --region "$REGION" --task-definition "$FAMILY" \
+  --query 'taskDefinition.revision' --output text)
+echo "$REV"                 # 42
+
+# If you want "family:rev" in one go
+aws ecs describe-task-definition \
+  --region "$REGION" --task-definition "$FAMILY" \
+  --query 'join(`:`, [taskDefinition.family, to_string(taskDefinition.revision)])' \
+  --output text
 
