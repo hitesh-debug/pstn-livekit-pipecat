@@ -1,5 +1,7 @@
 REGION=us-east-1
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+CLUSTER=lk-agents
+SERVICE=lk-agent
 
 # aws ecr create-repository --repository-name lk/agent --region $REGION || true
 
@@ -84,19 +86,49 @@ ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
   # latest ACTIVE task-def ARN (includes :revision)
 # aws ecs create-cluster --cluster-name lk-agents --region $REGION || true
 
-VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text --region $REGION)
-SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID Name=default-for-az,Values=true --query "Subnets[].SubnetId" --output text --region $REGION)
-S1=$(echo $SUBNETS | awk '{print $1}'); S2=$(echo $SUBNETS | awk '{print $2}')
+# VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query "Vpcs[0].VpcId" --output text --region $REGION)
+# SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC_ID Name=default-for-az,Values=true --query "Subnets[].SubnetId" --output text --region $REGION)
+# S1=$(echo $SUBNETS | awk '{print $1}'); S2=$(echo $SUBNETS | awk '{print $2}')
 
-SG_ID=$(aws ec2 create-security-group \
-  --group-name lk-agents-sg \
-  --description "lk agents egress" \
-  --vpc-id $VPC_ID --query GroupId --output text --region $REGION)
-aws ec2 authorize-security-group-egress --group-id $SG_ID \
-  --ip-permissions IpProtocol=-1,IpRanges='[{CidrIp=0.0.0.0/0}]' \
-  --region $REGION || true
+# SG_ID=$(aws ec2 create-security-group \
+#   --group-name lk-agents-sg \
+#   --description "lk agents egress" \
+#   --vpc-id $VPC_ID --query GroupId --output text --region $REGION)
+# aws ec2 authorize-security-group-egress --group-id $SG_ID \
+#   --ip-permissions IpProtocol=-1,IpRanges='[{CidrIp=0.0.0.0/0}]' \
+#   --region $REGION || true
 
-echo "SUBNETS: $S1,$S2"
-echo "SECURITY_GROUP: $SG_ID"
+# echo "SUBNETS: $S1,$S2"
+# echo "SECURITY_GROUP: $SG_ID"
 
+# aws ecs describe-clusters \
+#   --clusters "lk-agents" --include CAPACITY_PROVIDERS,SETTINGS \
+#   --region "$REGION" \
+#   --query 'clusters[0].{Providers:capacityProviders,Default:defaultCapacityProviderStrategy}'
+
+# # add FARGATE and FARGATE_SPOT; make SPOT the default if you like
+# aws ecs put-cluster-capacity-providers \
+#   --cluster "lk-agents" \
+#   --capacity-providers FARGATE FARGATE_SPOT \
+#   --default-capacity-provider-strategy capacityProvider=FARGATE_SPOT,weight=1 \
+#   --region "$REGION"
+# FAMILY=lk-agent
+# aws ecs describe-task-definition --region "$REGION" \
+#   --task-definition "$FAMILY" --query 'taskDefinition' > td.json
+
+# # Add runtimePlatform + remove read-only fields
+# jq 'del(.status,.taskDefinitionArn,.requiresAttributes,.revision,.compatibilities,.registeredAt,.registeredBy)
+#   | .runtimePlatform = {"cpuArchitecture":"ARM64","operatingSystemFamily":"LINUX"}' td.json > td-arm.json
+
+# NEW_TD_ARN=$(aws ecs register-task-definition \
+#   --region "$REGION" --cli-input-json file://td-arm.json \
+#   --query 'taskDefinition.taskDefinitionArn' --output text)
+
+# aws ecs update-service --region "$REGION" \
+#   --cluster "$CLUSTER" --service "$SERVICE" \
+#   --task-definition "$NEW_TD_ARN"
+
+# aws ecs register-task-definition \
+#   --cli-input-json file://agent-td.json \
+#   --region $REGION
 
