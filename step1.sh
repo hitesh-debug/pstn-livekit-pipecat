@@ -141,23 +141,36 @@ SERVICE=lk-agent
 # REGION=us-east-1
 FAMILY=lk-agent
 
-# Latest ACTIVE revision (deployable)
-TD_ARN=$(aws ecs list-task-definitions \
-  --region "$REGION" --family-prefix "$FAMILY" \
-  --status ACTIVE --sort DESC --max-results 1 \
-  --query 'taskDefinitionArns[0]' --output text)
-echo "$TD_ARN"              # arn:aws:ecs:...:task-definition/lk-agent:42
-echo "${TD_ARN##*:}"        # 42 (just the number)
+# # Latest ACTIVE revision (deployable)
+# TD_ARN=$(aws ecs list-task-definitions \
+#   --region "$REGION" --family-prefix "$FAMILY" \
+#   --status ACTIVE --sort DESC --max-results 1 \
+#   --query 'taskDefinitionArns[0]' --output text)
+# echo "$TD_ARN"              # arn:aws:ecs:...:task-definition/lk-agent:42
+# echo "${TD_ARN##*:}"        # 42 (just the number)
 
-# Or: ask ECS directly for the latest ACTIVE and get the number
-REV=$(aws ecs describe-task-definition \
-  --region "$REGION" --task-definition "$FAMILY" \
-  --query 'taskDefinition.revision' --output text)
-echo "$REV"                 # 42
+# # Or: ask ECS directly for the latest ACTIVE and get the number
+# REV=$(aws ecs describe-task-definition \
+#   --region "$REGION" --task-definition "$FAMILY" \
+#   --query 'taskDefinition.revision' --output text)
+# echo "$REV"                 # 42
 
-# If you want "family:rev" in one go
-aws ecs describe-task-definition \
-  --region "$REGION" --task-definition "$FAMILY" \
-  --query 'join(`:`, [taskDefinition.family, to_string(taskDefinition.revision)])' \
-  --output text
+# # If you want "family:rev" in one go
+# aws ecs describe-task-definition \
+#   --region "$REGION" --task-definition "$FAMILY" \
+#   --query 'join(`:`, [taskDefinition.family, to_string(taskDefinition.revision)])' \
+#   --output text
+export REPO=lk/agent
+# export TAG=$(git rev-parse --short HEAD || date +%Y%m%d%H%M%S)
+export IMAGE="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO"
 
+# aws ecr get-login-password --region "$REGION" \
+# | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
+
+# build multi-arch so it runs on both amd64/arm64
+# docker buildx create --use >/dev/null 2>&1 || true
+# docker buildx build --platform linux/amd64,linux/arm64 -t "$IMAGE" --push .
+
+docker build -f services/agent/Dockerfile -t "$IMAGE" services/agent
+docker tag "$IMAGE" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:latest"
+docker push "$IMAGE"
