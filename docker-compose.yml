@@ -6,6 +6,7 @@ services:
     ports: ["${CONTROLLER_PORT:-8080}:8080"]
     volumes:
       - ./services/agent:/app/agent:ro
+      - ~/.aws:/root/.aws:ro
     tty: true
 
   twiml_server:
