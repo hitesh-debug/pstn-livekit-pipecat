@@ -8,23 +8,6 @@ from botocore.exceptions import ClientError
 log = logging.getLogger("launcher")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-# ---- Required env on the EC2 controller (or wherever you run this) ----
-#   ECS_CLUSTER     = lk-agents
-#   AGENT_TASK_DEF  = lk-agent:1
-#   SUBNETS_CSV     = subnet-aaa,subnet-bbb
-#   SECGRPS_CSV     = sg-xxxx
-#
-# ---- Optional ----
-#   AWS_REGION         = us-east-1
-#   CAPACITY_PROVIDER  = FARGATE_SPOT   # or FARGATE
-#   PUBLIC_IP          = ENABLED        # or DISABLED
-#   AGENT_CONTAINER    = agent          # must match container name in TaskDef
-#   WAIT_FOR_RUNNING_S = 0              # seconds to wait for RUNNING (0 = no wait)
-#
-#   # Plain env for STT/TTS (since this isn’t prod):
-#   DEEPGRAM_API_KEY = ...
-#   ELEVEN_API_KEY   = ...
-#   ELEVEN_VOICE_ID  = 21m00Tcm4TlvDq8ikWAM   # optional but handy
 
 REGION    = os.getenv("AWS_REGION", "us-east-1")
 CLUSTER   = os.getenv("ECS_CLUSTER", "lk-agents")
@@ -35,10 +18,9 @@ SUBNETS   = [s.strip() for s in os.getenv("SUBNETS_CSV", "").split(",") if s.str
 SECGRPS   = [g.strip() for g in os.getenv("SECGRPS_CSV", "").split(",") if g.strip()]
 
 CAPACITY_PROVIDER = os.getenv("CAPACITY_PROVIDER", "FARGATE_SPOT")
-PUBLIC_IP         = os.getenv("PUBLIC_IP", "ENABLED")  # ENABLED or DISABLED
+PUBLIC_IP         = os.getenv("PUBLIC_IP", "ENABLED") 
 WAIT_FOR_RUNNING  = int(os.getenv("WAIT_FOR_RUNNING_S", "0"))
 
-# Plain env creds (non-prod)
 PLAIN_DEEPGRAM = os.getenv("DEEPGRAM_API_KEY")
 PLAIN_ELEVEN   = os.getenv("ELEVEN_API_KEY")
 ELEVEN_VOICE_ID = os.getenv("ELEVEN_VOICE_ID")
@@ -66,7 +48,7 @@ def _build_overrides(room_name: str, livekit_url: str, livekit_token: str):
 
     return {
         "containerOverrides": [{
-            "name": CONTAINER,   # must match TaskDef container name
+            "name": CONTAINER,
             "environment": env
         }]
     }
