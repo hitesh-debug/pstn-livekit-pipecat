@@ -4,5 +4,8 @@ pydantic==2.9.0
 python-dotenv==1.0.1
 pyjwt==2.9.0
 requests==2.32.3
-boto3
-livekit-server-sdk
+boto3==1.40.16
+
+# LiveKit (Python)
+livekit==0.18.5
+livekit-api==0.5.5
