@@ -6,6 +6,6 @@ pyjwt==2.9.0
 requests==2.32.3
 boto3==1.40.16
 
-# LiveKit (Python)
-livekit==0.18.5
+# LiveKit
+livekit==0.18.3
 livekit-api==0.5.5
