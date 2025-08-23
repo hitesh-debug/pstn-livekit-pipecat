@@ -1,40 +1,27 @@
-
-import os
+import os, time
 from datetime import timedelta
-from dotenv import load_dotenv
+from typing import Optional
 
-load_dotenv()
-API_KEY = os.environ["LIVEKIT_API_KEY"]
-API_SECRET = os.environ["LIVEKIT_API_SECRET"]
+# We use the official LiveKit Python helper to mint tokens
+# (install via controller/requirements.txt)
+from livekit import AccessToken, VideoGrants  # type: ignore
 
-def mint_livekit_token(room: str, identity: str, ttl_seconds: int = 900) -> str:
+LK_API_KEY    = os.environ["LIVEKIT_API_KEY"]
+LK_API_SECRET = os.environ["LIVEKIT_API_SECRET"]
+
+def mint_livekit_token(room: str, identity: str, ttl_seconds: int = 900, name: Optional[str] = None) -> str:
     """
-    Creates an access token that lets the agent join `room` with pub/sub.
+    Create a LiveKit access token that can join/publish/subscribe in `room`.
+    Identity must be unique per participant instance to avoid DuplicateIdentity.
     """
-    try:
-        # Preferred: use livekit's helper classes
-        from livekit import AccessToken, VideoGrant
-        grant = VideoGrant(room=room, room_join=True, room_admin=False,
-                           can_publish=True, can_subscribe=True)
-        at = AccessToken(API_KEY, API_SECRET, identity=identity, ttl=timedelta(seconds=ttl_seconds))
-        at.add_grant(grant)
-        return at.to_jwt()
-    except Exception:
-        # Fallback: build JWT manually via PyJWT
-        import time, jwt, uuid
-        now = int(time.time())
-        payload = {
-            "jti": str(uuid.uuid4()),
-            "iss": API_KEY,
-            "sub": identity,
-            "nbf": now - 10,
-            "exp": now + ttl_seconds,
-            "video": {  # LiveKit video grant
-                "room": room,
-                "roomJoin": True,
-                "canPublish": True,
-                "canSubscribe": True,
-            },
-        }
-        return jwt.encode(payload, API_SECRET, algorithm="HS256")
-
+    grants = VideoGrants(
+        room_join=True,
+        room=room,
+        can_subscribe=True,
+        can_publish=True,
+        can_publish_data=True,
+    )
+    at = AccessToken(LK_API_KEY, LK_API_SECRET, identity=identity, name=name or identity)
+    at.add_grants(grants)
+    at.ttl = timedelta(seconds=ttl_seconds)
+    return at.to_jwt()

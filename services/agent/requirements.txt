@@ -1,22 +1,10 @@
-# Core deps
 pydantic>=2.10.6,<3
 python-dotenv==1.0.1
 
-# Pipecat with LiveKit + OpenAI extras (includes correct transports/services)
-pipecat-ai[livekit,openai]==0.0.80
+# Pipecat with LiveKit + OpenAI + Deepgram adapters
+pipecat-ai[livekit,openai,deepgram]==0.0.80
 
-# LiveKit SDKs (these versions are tested against Pipecat 0.0.80)
-livekit==0.18.0
-livekit-api==0.6.4
-livekit-agents==0.5.6
-
-# (Optional) VAD if you want barge-in / speech turn detection
-# Pipecat will auto-use if present
-torch>=2.0.0
-silero-vad==5.1.2
-
-# (Optional) If you want ElevenLabs TTS
+# Optional add-ons
 elevenlabs==1.8.0
-
-# (Optional) If you want Deepgram STT
-deepgram-sdk==3.2.5
+silero-vad==5.1.2
+torch>=2.0.0

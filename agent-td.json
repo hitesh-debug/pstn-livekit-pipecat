@@ -14,8 +14,23 @@
     "command": ["python","agent.py"],
     "workingDirectory": "/app",
     "environment": [
-      { "name": "LIVEKIT_URL", "value": "wss://cozmox-6ss8wlrk.livekit.cloud" }
-    ],
+      { "name": "LIVEKIT_URL", "value": "wss://cozmox-6ss8wlrk.livekit.cloud" },
+      { "name": "LIVEKIT_API_KEY", "value": "API5ZAVWPamjGL7" },
+      { "name": "LIVEKIT_API_SECRET", "value": "mtw55KCyR6mwjRie88t0Qr22YYgdSL0Ku7fKjs88RJO" },
+      { "name": "LIVEKIT_SIP_URI", "value": "sip:28p3mcfarjq.us.sip.livekit.cloud" },
+      { "name": "CONTROLLER_PORT", "value": "8080" },
+      { "name": "CONTROLLER_TOKEN_TTL_SECONDS", "value": "900" },
+      { "name": "TWIML_PORT", "value": "8081" },
+      { "name": "STT_PROVIDER", "value": "whisper-lite" },
+      { "name": "TTS_PROVIDER", "value": "elevenlabs-streaming" },
+      { "name": "AWS_REGION", "value": "us-east-1" },
+      { "name": "ECS_CLUSTER", "value": "lk-agents" },
+      { "name": "AGENT_TASK_DEF", "value": "lk-agent" },
+      { "name": "SUBNETS_CSV", "value": "subnet-0bad4b65ff34777b8,subnet-0a5672000acf4de17" },
+      { "name": "SECGRPS_CSV", "value": "sg-00a49f95b64b56864" },
+      { "name": "DEEPGRAM_API_KEY", "value": "0eb941a4c1aecaa0170ebfad7b83a974c18e6c89" },
+      { "name": "ELEVEN_API_KEY", "value": "sk_fb5b136bf7b8e3c9a1edaa985dd02d57652ad07d291ba0cc" },
+      { "name": "ELEVEN_VOICE_ID", "value": "2EiwWnXFnvU5JabPnv8n" }],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
