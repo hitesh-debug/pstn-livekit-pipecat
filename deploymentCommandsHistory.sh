@@ -160,17 +160,17 @@ FAMILY=lk-agent
 #   --region "$REGION" --task-definition "$FAMILY" \
 #   --query 'join(`:`, [taskDefinition.family, to_string(taskDefinition.revision)])' \
 #   --output text
-export REPO=lk/agent
-# export TAG=$(git rev-parse --short HEAD || date +%Y%m%d%H%M%S)
-export IMAGE="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO"
+# export REPO=lk/agent
+# # export TAG=$(git rev-parse --short HEAD || date +%Y%m%d%H%M%S)
+# export IMAGE="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO"
 
-# aws ecr get-login-password --region "$REGION" \
-# | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
+# # aws ecr get-login-password --region "$REGION" \
+# # | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
 
-# build multi-arch so it runs on both amd64/arm64
-# docker buildx create --use >/dev/null 2>&1 || true
-# docker buildx build --platform linux/amd64,linux/arm64 -t "$IMAGE" --push .
+# # build multi-arch so it runs on both amd64/arm64
+# # docker buildx create --use >/dev/null 2>&1 || true
+# # docker buildx build --platform linux/amd64,linux/arm64 -t "$IMAGE" --push .
 
-docker build -f services/agent/Dockerfile -t "$IMAGE" services/agent
-docker tag "$IMAGE" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:latest"
-docker push "$IMAGE"
+# docker build -f services/agent/Dockerfile -t "$IMAGE" services/agent
+# docker tag "$IMAGE" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO:latest"
+# docker push "$IMAGE"

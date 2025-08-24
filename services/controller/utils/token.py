@@ -12,7 +12,6 @@ def mint_livekit_token(room: str, identity: str, ttl_seconds: int = 900) -> str:
     Creates an access token that lets the agent join `room` with pub/sub.
     """
     try:
-        # Preferred: use livekit's helper classes
         from livekit import AccessToken, VideoGrant
         grant = VideoGrant(room=room, room_join=True, room_admin=False,
                            can_publish=True, can_subscribe=True)
